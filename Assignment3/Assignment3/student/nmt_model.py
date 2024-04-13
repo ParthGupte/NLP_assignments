@@ -85,7 +85,7 @@ class NMT(nn.Module):
 
         self.post_embed_cnn = nn.Conv1d(in_channels=embed_size,out_channels=embed_size,kernel_size=2,padding='same')
         self.encoder = nn.LSTM(embed_size,hidden_size,bidirectional=True)
-        self.decoder = nn.LSTMCell(embed_size,hidden_size)
+        self.decoder = nn.LSTMCell(embed_size+hidden_size,hidden_size)
         self.h_projection = nn.Linear(2*hidden_size,hidden_size,bias=False)
         self.c_projection = nn.Linear(2*hidden_size,hidden_size,bias=False)
         self.att_projection = nn.Linear(2*hidden_size,hidden_size,bias=False)
@@ -341,7 +341,7 @@ class NMT(nn.Module):
 
         dec_state = self.decoder(Ybar_t,dec_state)
         dec_hidden,dec_cell = dec_state
-        un_squeezed_dec_hidden = torch.unsqueeze(dec_state,-1)
+        un_squeezed_dec_hidden = torch.unsqueeze(dec_hidden,-1)
         e_t = torch.bmm(enc_hiddens_proj,un_squeezed_dec_hidden)
         e_t = torch.squeeze(e_t,-1)
 
@@ -385,6 +385,11 @@ class NMT(nn.Module):
         un_squeezed_alpha_t = torch.unsqueeze(alpha_t,1)
         a_t = torch.bmm(un_squeezed_alpha_t,enc_hiddens)
         a_t = torch.squeeze(a_t,1)
+        U_t = torch.cat((dec_hidden,a_t),1)
+        V_t = self.combined_output_projection(U_t)
+        O_t = self.dropout(torch.tanh(V_t))
+
+        
         ### END YOUR CODE
 
         combined_output = O_t
